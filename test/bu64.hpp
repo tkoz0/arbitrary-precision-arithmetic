@@ -21,6 +21,9 @@ bool bu64_add64(uint64_t *input, size_t ilen, uint64_t a);
 // divide by d in place, return remainder
 uint32_t bu64_div32(uint64_t *input, size_t ilen, uint32_t d);
 
+// divide by d in place, return remainder
+uint64_t bu64_div64(uint64_t *input, size_t ilen, uint64_t d);
+
 // subtract a in place, return false if a is bigger that the input
 // (false return value indicates underflow)
 bool bu64_sub64(uint64_t *input, size_t ilen, uint64_t a);

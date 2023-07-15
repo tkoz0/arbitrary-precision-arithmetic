@@ -46,6 +46,19 @@ uint32_t bu64_div32(uint64_t *input, size_t ilen, uint32_t d)
     return v;
 }
 
+// divide big uint by uint64_t (using inline asm for divq instruction)
+uint64_t bu64_div64(uint64_t *input, size_t ilen, uint64_t d)
+{
+    uint64_t v0 = 0, v1;
+    for (size_t i = ilen; i--;)
+    {
+        v1 = v0;
+        v0 = input[i];
+        _div64_1(v0,v1,d,input+i,&v0);
+    }
+    return v0;
+}
+
 // subtract uint64_t from big uint
 bool bu64_sub64(uint64_t *input, size_t ilen, uint64_t a)
 {
