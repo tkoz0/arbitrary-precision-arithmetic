@@ -70,8 +70,8 @@ static inline void _div64_1(uint64_t u0, uint64_t u1, uint64_t d,
         : "=a"(qq), "=d"(rr) // quotient in rax, remainder in rdx
         : [d]"r"(d), "a"(u0), "d"(u1) // dividend in rdx:rax
     );
-    *q = qq;
-    *r = rr;
+    if (q) *q = qq;
+    if (r) *r = rr;
 }
 
 // divide 128 bit number by 64 bit number (x86_64 only, uses divq)
@@ -84,6 +84,6 @@ static inline void _div64_2(uint64_t u0, uint64_t u1, uint64_t d,
     // then we have u1q * 2^64 + (u1r * 2^64 + u0) / d
     // 2nd division can be done with divq since u1r < d
     uint64_t u1q = u1 / d, u1r = u1 % d;
-    *q1 = u1q;
+    if (q1) *q1 = u1q;
     _div64_1(u0,u1r,d,q0,r);
 }
