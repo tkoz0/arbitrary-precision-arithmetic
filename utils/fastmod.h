@@ -25,7 +25,12 @@ static inline uint32_t _modm31(uint64_t a)
     return tmp2 - (tmp2 >= m31)*m31;
 }
 
+/*
+2 versions written for large modulo m61, need to test for speed
+*/
+
 // modulo m61 (2^61-1) for large integer, least limb first
+// this one generates much shorter asm output
 static inline uint64_t _modm61arrle__v1(const uint64_t *arr, size_t len)
 {
     uint64_t ret = 0; // always fits in 61 bits
@@ -47,6 +52,7 @@ static inline uint64_t _modm61arrle__v1(const uint64_t *arr, size_t len)
 }
 
 // modulo m61 (2^61-1) for large integer, least limb first
+// this one generates much longer asm output
 static inline uint64_t _modm61arrle__v2(const uint64_t *arr, size_t len)
 {
     uint64_t ret = 0;

@@ -53,11 +53,13 @@ void bu64_mul(const uint64_t *__restrict__ arr1, size_t len1,
 // convert number to string (bases 2-36 supported, uses lowercase letters)
 // output must be long enough to fit result with null character
 // input is modified to have division done in place
-size_t bu64_write_str(uint8_t base, uint64_t *__restrict__ input, size_t ilen, char *__restrict__ output);
+size_t bu64_write_str(uint8_t base, uint64_t *__restrict__ input, size_t ilen,
+                      char *__restrict__ output);
 
 // convert string to number, output must be long enough to fit result
 // string must be null terminated
 // characters must be 0-9 and a-z, any others lead to undefined behavior
 // input is not modified
-size_t bu64_read_str(uint8_t base, const char *__restrict__ input, uint64_t *__restrict__ output);
+size_t bu64_read_str(uint8_t base, const char *__restrict__ input,
+                     uint64_t *__restrict__ output);
 
