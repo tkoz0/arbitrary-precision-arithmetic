@@ -39,7 +39,7 @@ bool u64arr_ll_sub_64(uint64_t *n, size_t l, uint64_t a);
 // multiply {n,l} by a 32 bit integer
 // returns carry amount
 // TODO test if this is faster than mul_64
-uint32_t u64arr_ll_mul_32(uint64_t *n, size_t l, uint64_t a);
+uint32_t u64arr_ll_mul_32(uint64_t *n, size_t l, uint32_t a);
 
 // multiply {n,l} by a 64 bit integer
 // returns carry amount

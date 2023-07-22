@@ -42,7 +42,7 @@ compilers avoid it because it raises sigfpe if quotient is too big
 // assumes quotient fits in 64 bits, otherwise sigfpe occurs
 // (x86_64 only, uses divq instruction which compilers generally avoid)
 static inline void _udiv64_1(uint64_t u0, uint64_t u1, uint64_t d,
-                            uint64_t *q, uint64_t *r)
+                             uint64_t *q, uint64_t *r)
 {
     uint64_t qq,rr;
     __asm__
@@ -61,7 +61,7 @@ static inline void _udiv64_1(uint64_t u0, uint64_t u1, uint64_t d,
 // (x86_64 only, uses divq instruction which compilers generally avoid)
 // this one does division twice so it can handle more than _div64_1
 static inline void _udiv64_2(uint64_t u0, uint64_t u1, uint64_t d,
-                            uint64_t *q0, uint64_t *q1, uint64_t *r)
+                             uint64_t *q0, uint64_t *q1, uint64_t *r)
 {
     // quotient to compute is (u1*2^64 + u0) / d
     // first divide u1 into u1 = u1q*d + u1r

@@ -26,6 +26,51 @@ bool BUI_eq(BUI a, BUI b)
     return true;
 }
 
+// generate from sequence
+BUI BUI_gen_seq(uint64_t lo, uint64_t hi, uint64_t step)
+{
+    BUI ret;
+    for (uint64_t n = lo; n < hi; n += step)
+        ret.push_back(n);
+    return ret;
+}
+
+// to restrict sizes for testing multiplication
+// so there are plenty that do not overflow 64 bits
+BUI masks_for_mul = {0xFFFFFFFFFFFFFFFFuLL,
+                     0x00FFFFFFFFFFFFFFuLL,
+                     0x0000FFFFFFFFFFFFuLL,
+                     0x000000FFFFFFFFFFuLL,
+                     0x00000000FFFFFFFFuLL,
+                     0x0000000000FFFFFFuLL,
+                     0x000000000000FFFFuLL,
+                     0x00000000000000FFuLL};
+
+BUI masks_for_add = {0xFFFFFFFFFFFFFFFFuLL,
+                     0x0FFFFFFFFFFFFFFFuLL};
+
+// generate from LCG
+// bit masks allow better variation in limb magnitude
+// otherwise almost all limbs are very big
+// (>99% are bigger than 2^57 using pure LCG output)
+BUI BUI_gen_lcg(uint64_t seed, size_t len,
+                BUI bit_masks = {0xFFFFFFFFFFFFFFFFuLL},
+                uint64_t mult = 0x5DEECE66DuLL, uint64_t add = 0xBuLL)
+{
+    BUI ret;
+    for (size_t i = 0; i < len; ++i)
+    {
+        seed = seed*mult + add;
+        uint64_t mask = bit_masks[(seed >> 32) % bit_masks.size()];
+        seed = seed*mult + add;
+        uint64_t tmp = seed >> 32;
+        seed = seed*mult + add;
+        tmp |= seed & 0xFFFFFFFF00000000uLL;
+        ret.push_back(tmp & mask);
+    }
+    return ret;
+}
+
 void test_u64arr_ll_inc()
 {
     printf("test_u64arr_ll_inc()\n");

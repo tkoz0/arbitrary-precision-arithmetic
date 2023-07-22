@@ -108,8 +108,8 @@ static inline uint8_t _digitval(char c)
 }
 
 size_t u64arr_ll_write_str(uint8_t base,
-                         uint64_t *__restrict__ n, size_t l,
-                         char *__restrict__ s)
+                           uint64_t *__restrict__ n, size_t l,
+                           char *__restrict__ s)
 {
     char *sptr = s;
     while (l and n[l-1] == 0)
@@ -139,8 +139,8 @@ size_t u64arr_ll_write_str(uint8_t base,
 }
 
 size_t u64arr_ll_read_str(uint8_t base,
-                        const char *__restrict__ s,
-                        uint64_t *__restrict__ n)
+                          const char *__restrict__ s,
+                          uint64_t *__restrict__ n)
 {
     size_t l = 1;
     n[0] = 0;
@@ -158,7 +158,7 @@ size_t u64arr_ll_read_str(uint8_t base,
 }
 
 bool u64arr_ll_add_to(uint64_t *__restrict__ n1, size_t l1,
-                    const uint64_t *__restrict__ n2, size_t l2)
+                      const uint64_t *__restrict__ n2, size_t l2)
 {
     assert(l1 >= l2);
     bool c = false;
@@ -166,6 +166,9 @@ bool u64arr_ll_add_to(uint64_t *__restrict__ n1, size_t l1,
     size_t i;
     for (i = 0; i < l2; ++i)
     {
+        // TODO make this faster
+        // it generates a jump instruction
+        // see x86 ADC instruction (add with carry)
         tmp = n1[i] + n2[i] + c;
         c = (tmp < n1[i]) or (c and tmp <= n1[i]);
         n1[i] = tmp;
@@ -176,7 +179,7 @@ bool u64arr_ll_add_to(uint64_t *__restrict__ n1, size_t l1,
 }
 
 bool u64arr_ll_sub_from(uint64_t *__restrict__ n1, size_t l1,
-                      const uint64_t *__restrict__ n2, size_t l2)
+                        const uint64_t *__restrict__ n2, size_t l2)
 {
     assert(l1 >= l2);
     bool c = true;
@@ -184,6 +187,8 @@ bool u64arr_ll_sub_from(uint64_t *__restrict__ n1, size_t l1,
     size_t i;
     for (i = 0; i < l2; ++i)
     {
+        // TODO make this faster
+        // see x86 SBB instruction (subtract with borrow)
         tmp = n1[i] + (~n2[i]) + c;
         c = (tmp < n1[i]) or (c and tmp <= n1[i]);
         n1[i] = tmp;
@@ -196,13 +201,14 @@ bool u64arr_ll_sub_from(uint64_t *__restrict__ n1, size_t l1,
 }
 
 bool u64arr_ll_add(const uint64_t *__restrict__ x, size_t lx,
-                 const uint64_t *__restrict__ y, size_t ly,
-                 uint64_t *__restrict__ z)
+                   const uint64_t *__restrict__ y, size_t ly,
+                   uint64_t *__restrict__ z)
 {
     size_t i = 0, l = (lx < ly ? lx : ly);
     bool c = false;
     while (i < l) // add lower limbs both have
     {
+        // TODO see comment in u64arr_ll_add_to
         z[i] = x[i] + y[i] + c;
         c = (z[i] < x[i]) or (c and z[i] <= x[i]);
         ++i;
@@ -221,13 +227,14 @@ bool u64arr_ll_add(const uint64_t *__restrict__ x, size_t lx,
 }
 
 bool u64arr_ll_sub(const uint64_t *__restrict__ x, size_t lx,
-                 const uint64_t *__restrict__ y, size_t ly,
-                 uint64_t *__restrict__ z)
+                   const uint64_t *__restrict__ y, size_t ly,
+                   uint64_t *__restrict__ z)
 {
     size_t i = 0, l = (lx < ly ? lx : ly);
     bool c = true;
     while (i < l) // add lower limbs using 2s complement subtraction
     {
+        // TODO see comment in u64arr_ll_sub_from
         z[i] = x[i] + (~y[i]) + c;
         c = (z[i] < x[i]) or (c and z[i] <= x[i]);
         ++i;
@@ -266,8 +273,8 @@ struct _add128
 static_assert(sizeof(_add128) == 24);
 
 void u64arr_ll_mul(const uint64_t *__restrict__ x, size_t lx,
-                 const uint64_t *__restrict__ y, size_t ly,
-                 uint64_t *__restrict__ z)
+                   const uint64_t *__restrict__ y, size_t ly,
+                   uint64_t *__restrict__ z)
 {
     assert(lx > 0 and ly > 0);
     _add128 *sums = new _add128[lx+ly-1]();
@@ -284,6 +291,7 @@ void u64arr_ll_mul(const uint64_t *__restrict__ x, size_t lx,
     bool c = false;
     for (size_t i = 0; i < lx+ly-1; ++i) // middle
     {
+        // TODO see comment in u64arr_ll_add_to
         tmp = z[i+1] + sums[i]._u1 + c;
         c = (tmp < z[i+1]) or (c and tmp <= z[i+1]);
         z[i+1] = tmp;
@@ -304,7 +312,7 @@ void u64arr_ll_mul(const uint64_t *__restrict__ x, size_t lx,
 // return quotient and store remainder in {z,l}
 // requires highest limb in y is nonzero
 static inline uint64_t u64arr_ll_div_helper(const uint64_t *__restrict__ y,
-                                          uint64_t *__restrict__ z, size_t l)
+                                            uint64_t *__restrict__ z, size_t l)
 {
     assert(l > 0 and y[l-1] and z[l-1]);
     uint64_t ret = 0;
@@ -347,9 +355,9 @@ static inline uint64_t u64arr_ll_div_helper(const uint64_t *__restrict__ y,
 }
 
 void u64arr_ll_div(const uint64_t *__restrict__ x, size_t lx,
-                 const uint64_t *__restrict__ y, size_t ly,
-                 uint64_t *__restrict__ q,
-                 uint64_t *__restrict__ r)
+                   const uint64_t *__restrict__ y, size_t ly,
+                   uint64_t *__restrict__ q,
+                   uint64_t *__restrict__ r)
 {
     assert(lx >= ly and ly > 0);
     while (y[ly-1] == 0)
