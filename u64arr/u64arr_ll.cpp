@@ -99,18 +99,22 @@ uint64_t u64arr_ll_div_64(uint64_t *n, size_t l, uint64_t a)
 }
 
 // digits for bases 2-36
-const char *_digits = "0123456789abcdefghijklmnopqrstuvwxyz";
+const char *_digits1 = "0123456789abcdefghijklmnopqrstuvwxyz";
+const char *_digits2 = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ";
 
-// convert digit to numereic value, only supports 0-9 and a-z
+// convert digit to numereic value
 static inline uint8_t _digitval(char c)
 {
-    return c <= '9' ? c-'0' : c-'a'+10;
+    return c <= '9' ? c-'0' : (c >= 'a' ? c-'a'+10 : c-'A'+10);
 }
 
-size_t u64arr_ll_write_str(uint8_t base,
+size_t u64arr_ll_write_str(uint8_t base, bool uppercase,
                            uint64_t *__restrict__ n, size_t l,
                            char *__restrict__ s)
 {
+    const char *_digits = _digits1;
+    if (uppercase)
+        _digits = _digits2;
     char *sptr = s;
     while (l and n[l-1] == 0)
         --l;

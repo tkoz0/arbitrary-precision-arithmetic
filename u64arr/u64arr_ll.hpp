@@ -59,23 +59,23 @@ low level conversion to/from strings
 */
 
 // convert number {n,l} to string (s)
-// bases 2-36 supported using lowercase letters
+// bases 2-36 supported using specified case
 // s must be long enough to fit result and null
 // input is modified for division in place
 // returns length of result (not including null)
-size_t u64arr_ll_write_str(uint8_t base,
-                         uint64_t *__restrict n, size_t l,
-                         char *__restrict__ s);
+size_t u64arr_ll_write_str(uint8_t base, bool uppercase,
+                           uint64_t *__restrict__ n, size_t l,
+                           char *__restrict__ s);
 
 // convert string (s) to number (n)
-// s must be null terminated and consist only of 0-9 and a-z
-// only bases 2-36 are supported with lowercase letters
-// if input consists of other characters, result is undefined
+// s must end with null and consist only of 0-9 and a-z and A-Z
+// only bases 2-36 are supported with lowercase/uppercase letters
+// if input contains other characters, result is undefined
 // n must be long enough to fit result
 // returns number of limbs in result
 size_t u64arr_ll_read_str(uint8_t base,
-                        const char *__restrict__ s,
-                        uint64_t *__restrict__ n);
+                          const char *__restrict__ s,
+                          uint64_t *__restrict__ n);
 
 /*
 larger in-place operations
@@ -85,13 +85,13 @@ larger in-place operations
 // requires l1 >= l2
 // returns carry bit if going past length l1
 bool u64arr_ll_add_to(uint64_t *__restrict__ n1, size_t l1,
-                    const uint64_t *__restrict__ n2, size_t l2);
+                      const uint64_t *__restrict__ n2, size_t l2);
 
 // sets {n1,l1} to {n1,l1}-{n2,l2}
 // requires l1 >= l2
 // returns true if underflow occurs
 bool u64arr_ll_sub_from(uint64_t *__restrict__ n1, size_t l1,
-                      const uint64_t *__restrict__ n2, size_t l2);
+                        const uint64_t *__restrict__ n2, size_t l2);
 
 /*
 operations on same length inputs
@@ -105,21 +105,21 @@ operations on different length inputs
 // z must have length >= max(lx,ly)
 // returns carry bit if needing length > max(lx,ly)
 bool u64arr_ll_add(const uint64_t *__restrict__ x, size_t lx,
-                 const uint64_t *__restrict__ y, size_t ly,
-                 uint64_t *__restrict__ z);
+                   const uint64_t *__restrict__ y, size_t ly,
+                   uint64_t *__restrict__ z);
 
 // {z,} = {x,lx} - {y,ly}
 // z must have length >= max(lx,ly)
 // returns true if underflow occurs
 bool u64arr_ll_sub(const uint64_t *__restrict__ x, size_t lx,
-                 const uint64_t *__restrict__ y, size_t ly,
-                 uint64_t *__restrict__ z);
+                   const uint64_t *__restrict__ y, size_t ly,
+                   uint64_t *__restrict__ z);
 
 // {z,} = {x,lx} * {y,ly}
 // output must have length >= lx+ly
 void u64arr_ll_mul(const uint64_t *__restrict__ x, size_t lx,
-                 const uint64_t *__restrict__ y, size_t ly,
-                 uint64_t *__restrict__ z);
+                   const uint64_t *__restrict__ y, size_t ly,
+                   uint64_t *__restrict__ z);
 
 // {q,} = {x,lx} / {y,ly}
 // {r,} = {x,lx} % {y,ly}
@@ -128,6 +128,6 @@ void u64arr_ll_mul(const uint64_t *__restrict__ x, size_t lx,
 // must have lx >= ly
 // behavior undefined if {y,ly} is 0
 void u64arr_ll_div(const uint64_t *__restrict__ x, size_t lx,
-                 const uint64_t *__restrict__ y, size_t ly,
-                 uint64_t *__restrict__ q,
-                 uint64_t *__restrict__ r);
+                   const uint64_t *__restrict__ y, size_t ly,
+                   uint64_t *__restrict__ q,
+                   uint64_t *__restrict__ r);
