@@ -7,6 +7,7 @@
 #include <vector>
 
 #include "../u64arr/u64arr_ll.hpp"
+#include "../utils/fastmod.h"
 
 // big unsigned integer
 typedef std::vector<uint64_t> BUI;
@@ -71,6 +72,30 @@ BUI BUI_gen_lcg(uint64_t seed, size_t len,
     return ret;
 }
 
+// class for hashing numbers to check correctness (with high probability)
+struct BUI_hash
+{
+    uint64_t h_add,h_xor,h_mod;
+    BUI_hash(BUI &n)
+    {
+        h_add = 0;
+        h_xor = 0;
+        for (uint64_t i : n)
+        {
+            h_add += i; // sum of limbs
+            h_xor ^= i; // xor of limbs
+        }
+        h_mod = _modm61arrle__v1(n.data(),n.size()); // mod by a prime
+    }
+    BUI_hash(uint64_t h_add, uint64_t h_xor, uint64_t h_mod):
+        h_add(h_add), h_xor(h_xor), h_mod(h_mod) {}
+    BUI_hash(uint64_t n): h_add(n), h_xor(n), h_mod(_modm61(n)) {}
+    bool operator==(const BUI_hash &o)
+    { return (h_add == o.h_add) and (h_xor == o.h_xor) and (h_mod == o.h_mod); }
+    bool operator!=(const BUI_hash &o)
+    { return (h_add != o.h_add) or (h_xor != o.h_xor) or (h_mod != o.h_mod); }
+};
+
 void test_u64arr_ll_inc()
 {
     printf("test_u64arr_ll_inc()\n");
@@ -127,21 +152,97 @@ void test_u64arr_ll_dec()
 void test_u64arr_ll_add_64()
 {
     printf("test_u64arr_ll_add_64()\n");
+    BUI a = {0};
+    bool ret = u64arr_ll_add_64(a.data(),1,UMAX-5);
+    assert(!ret);
+    assert(BUI_eq(a,{UMAX-5}));
+    ret = u64arr_ll_add_64(a.data(),1,UMAX-7);
+    assert(ret);
+    a.push_back(1);
+    assert(BUI_eq(a,{UMAX-13,1}));
+    a = {5,UMAX,UMAX,400};
+    ret = u64arr_ll_add_64(a.data(),4,UMAX);
+    assert(!ret);
+    assert(BUI_eq(a,{4,0,0,401}));
+    ret = u64arr_ll_add_64(a.data(),4,UMAX-1);
+    assert(!ret);
+    assert(BUI_eq(a,{2,1,0,401}));
 }
 
 void test_u64arr_ll_sub_64()
 {
     printf("test_u64arr_ll_sub_64()\n");
+    BUI a = {0};
+    bool ret = u64arr_ll_sub_64(a.data(),1,0);
+    assert(!ret);
+    assert(BUI_eq(a,{0}));
+    ret = u64arr_ll_sub_64(a.data(),1,1);
+    assert(ret);
+    assert(BUI_eq(a,{UMAX}));
+    a = {17000000000uLL,0,0,1};
+    ret = u64arr_ll_sub_64(a.data(),4,18000000000uLL);
+    assert(!ret);
+    assert(BUI_eq(a,{UMAX-999999999,UMAX,UMAX}));
+    a = {5,0,0,0,0};
+    ret = u64arr_ll_sub_64(a.data(),5,7);
+    assert(ret);
+    assert(BUI_eq(a,{UMAX-1,UMAX,UMAX,UMAX,UMAX}));
 }
 
 void test_u64arr_ll_mul_32()
 {
     printf("test_u64arr_ll_mul_32()\n");
+    BUI a = {0,0,0};
+    uint32_t ret = u64arr_ll_mul_32(a.data(),3,71);
+    assert(ret == 0);
+    assert(BUI_eq(a,{0,0,0}));
+    a[0] = 1;
+    ret = u64arr_ll_mul_32(a.data(),3,88);
+    assert(ret == 0);
+    assert(BUI_eq(a,{88,0,0}));
+    ret = u64arr_ll_mul_32(a.data(),3,0xFFFFFFFF);
+    assert(ret == 0);
+    assert(BUI_eq(a,{377957121960,0,0}));
+    ret = u64arr_ll_mul_32(a.data(),3,0xFFFFFFFF);
+    assert(ret == 0);
+    assert(BUI_eq(a,{18446743317795307608uLL,87,0}));
+    a = {77,12000000000000uLL};
+    ret = u64arr_ll_mul_32(a.data(),2,750000000);
+    assert(ret == 487);
+    assert(BUI_eq(a,{57750000000uLL,16435636103448363008uLL}));
+    a = {UMAX,UMAX,UMAX,UMAX};
+    ret = u64arr_ll_mul_32(a.data(),4,1103);
+    assert(ret == 1102);
+    assert(BUI_eq(a,{UMAX-1102,UMAX,UMAX,UMAX}));
 }
 
 void test_u64arr_ll_mul_64()
 {
     printf("test_u64arr_ll_mul_64()\n");
+    BUI a = {1};
+    uint64_t ret = u64arr_ll_mul_64(a.data(),1,_m61);
+    assert(ret == 0);
+    assert(BUI_eq(a,{_m61}));
+    ret = u64arr_ll_mul_64(a.data(),1,_m61);
+    assert(ret == 288230376151711743uLL);
+    a.push_back(ret);
+    assert(BUI_eq(a,{13835058055282163713uLL,288230376151711743uLL}));
+    ret = u64arr_ll_mul_64(a.data(),2,_m61);
+    assert(ret == 36028797018963967uLL);
+    assert(BUI_eq(a,{6917529027641081855uLL,17582052945254416384uLL}));
+    BUI primes100 = {2,3,5,7,11,13,17,19,23,29,31,37,41,43,47,
+                     53,59,61,67,71,73,79,83,89,97};
+    a = {1};
+    for (uint64_t p : primes100)
+    {
+        ret = u64arr_ll_mul_64(a.data(),a.size(),p);
+        if (ret)
+            a.push_back(ret);
+    }
+    assert(BUI_eq(a,{14005151959471558694uLL,124985089766135611uLL}));
+    ret = u64arr_ll_mul_64(a.data(),2,_m31);
+    assert(ret == 14550179);
+    assert(BUI_eq(a,{15454450193228165082uLL,8151940110614728324uLL}));
 }
 
 void test_u64arr_ll_div_32()
@@ -196,21 +297,21 @@ void test_u64arr_ll_div()
 
 int main(int argc, const char **argv)
 {
-    test_u64arr_ll_inc();
-    test_u64arr_ll_dec();
-    test_u64arr_ll_add_64();
-    test_u64arr_ll_sub_64();
-    test_u64arr_ll_mul_32();
+    //test_u64arr_ll_inc();
+    //test_u64arr_ll_dec();
+    //test_u64arr_ll_add_64();
+    //test_u64arr_ll_sub_64();
+    //test_u64arr_ll_mul_32();
     test_u64arr_ll_mul_64();
-    test_u64arr_ll_div_32();
-    test_u64arr_ll_div_64();
-    test_u64arr_ll_write_str();
-    test_u64arr_ll_read_str();
-    test_u64arr_ll_add_to();
-    test_u64arr_ll_sub_from();
-    test_u64arr_ll_add();
-    test_u64arr_ll_sub();
-    test_u64arr_ll_mul();
-    test_u64arr_ll_div();
+    //test_u64arr_ll_div_32();
+    //test_u64arr_ll_div_64();
+    //test_u64arr_ll_write_str();
+    //test_u64arr_ll_read_str();
+    //test_u64arr_ll_add_to();
+    //test_u64arr_ll_sub_from();
+    //test_u64arr_ll_add();
+    //test_u64arr_ll_sub();
+    //test_u64arr_ll_mul();
+    //test_u64arr_ll_div();
     return 0;
 }

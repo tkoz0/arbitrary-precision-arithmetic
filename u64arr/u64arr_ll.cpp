@@ -40,7 +40,7 @@ bool u64arr_ll_sub_64(uint64_t *n, size_t l, uint64_t a)
     uint64_t tmp = n[0]; // subtract from first limb
     n[0] -= a;
     bool c = (n[0] > tmp); // propagate the "borrow" process
-    size_t i = 0;
+    size_t i = 1;
     while (i < l and c)
         c = (n[i++]-- == 0);
     return c;
