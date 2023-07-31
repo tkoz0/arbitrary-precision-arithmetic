@@ -4,6 +4,7 @@
 #include <cstdint>
 #include <cstdlib>
 
+#include <cstring>
 #include <vector>
 
 #include "../u64arr/u64arr_ll.hpp"
@@ -25,6 +26,12 @@ bool BUI_eq(BUI a, BUI b)
         if (a[i] != b[i])
             return false;
     return true;
+}
+
+// string equality
+bool str_eq(const char *__restrict__ a, const char *__restrict__ b)
+{
+    return strcmp(a,b) == 0;
 }
 
 // generate from sequence
@@ -73,6 +80,7 @@ BUI BUI_gen_lcg(uint64_t seed, size_t len,
 }
 
 // class for hashing numbers to check correctness (with high probability)
+// TODO add java string hash (31*hash + nextbyte) and crc64
 struct BUI_hash
 {
     uint64_t h_add,h_xor,h_mod;
@@ -248,21 +256,142 @@ void test_u64arr_ll_mul_64()
 void test_u64arr_ll_div_32()
 {
     printf("test_u64arr_ll_div_32()\n");
+    BUI a = {0};
+    uint32_t ret = u64arr_ll_div_32(a.data(),1,75140);
+    assert(ret == 0);
+    assert(BUI_eq(a,{0}));
+    a = {_m61};
+    ret = u64arr_ll_div_32(a.data(),1,_m31);
+    assert(ret == (1<<30)-1);
+    assert(BUI_eq(a,{1<<30}));
+    BUI primes100 = {2,3,5,7,11,13,17,19,23,29,31,37,41,43,47,
+                     53,59,61,67,71,73,79,83,89,97};
+    a = {14005151959471558694uLL,124985089766135611uLL};
+    for (uint64_t p : primes100)
+    {
+        ret = u64arr_ll_div_32(a.data(),a.size(),p);
+        assert(ret == 0);
+    }
+    assert(a.back() == 0);
+    a.pop_back();
+    assert(BUI_eq(a,{1}));
+    a = {14005151959471558694uLL,124985089766135611uLL};
+    ret = u64arr_ll_div_32(a.data(),2,16777216);
+    assert(ret == 11210790);
+    assert(BUI_eq(a,{13481309715515015473uLL,7449691877uLL}));
 }
 
 void test_u64arr_ll_div_64()
 {
     printf("test_u64arr_ll_div_64()\n");
+    BUI a = {0};
+    uint64_t ret = u64arr_ll_div_64(a.data(),1,UMAX);
+    assert(ret == 0);
+    assert(BUI_eq(a,{0}));
+    a = {UMAX-2};
+    ret = u64arr_ll_div_64(a.data(),1,UMAX);
+    assert(ret == UMAX-2);
+    assert(BUI_eq(a,{0}));
+    a = {14722052863563208240uLL,2844907266022922488uLL,
+         15977678935670796422uLL,3967148191121uLL};
+    ret = u64arr_ll_div_64(a.data(),4,73000000000000uLL);
+    assert(ret == 67850737755696uLL);
+    assert(BUI_eq(a,{12113468845911842103uLL,4722885315982888144uLL,
+                     1002479005261710302uLL,0}));
+    ret = u64arr_ll_div_64(a.data(),4,1000000000000037uLL);
+    assert(ret == 296493693962529uLL);
+    assert(BUI_eq(a,{16956912574872315102uLL,8836087472045989416uLL,1002,0}));
+    ret = u64arr_ll_div_64(a.data(),4,142857);
+    assert(ret == 111453);
+    assert(BUI_eq(a,{13072324724826654137uLL,129447444992748109uLL,0,0}));
 }
 
 void test_u64arr_ll_write_str()
 {
     printf("test_u64arr_ll_write_str()\n");
+    char s[1000];
+    BUI a = {0};
+    size_t ret = u64arr_ll_write_str(2,true,a.data(),1,s);
+    assert(ret == 1);
+    assert(!strcmp(s,"0"));
+    a = {13179439483193780233uLL,795447783920280270uLL,10302852741122617414uLL,
+         4686237692481951503uLL,852376800724301uLL};
+    ret = u64arr_ll_write_str(36,true,a.data(),5,s);
+    assert(ret == 60);
+    assert(!strcmp(s,
+        "1HJTR9LZK0RTZFK81YK6LVBJK3E0TU6CIN22GVKP0OJUAHHIGG7U8WO5Y96X"));
+    assert(BUI_eq(a,{0}));
+    BUI a2 = {14996889397075187173uLL,16224389114002008162uLL,29004uLL};
+    a = a2;
+    ret = u64arr_ll_write_str(21,false,a.data(),3,s);
+    assert(ret == 33);
+    assert(!strcmp(s,"4h5h6d75d04backc05969222gbb910451"));
+    a = a2;
+    ret = u64arr_ll_write_str(10,true,a.data(),3,s);
+    assert(ret == 43);
+    assert(!strcmp(s,"9869849057328637468598619034897346872546789"));
+    ret = u64arr_ll_write_str(2,false,a.data(),2,s);
+    assert(ret == 1);
+    assert(!strcmp(s,"0"));
+    a = {12157665459056928801uLL}; // 3^40
+    ret = u64arr_ll_write_str(2,false,a.data(),1,s);
+    assert(ret == 64);
+    assert(!strcmp(s,
+        "1010100010111000101101000101001000101001000111111110100000100001"));
+    a = {12157665459056928801uLL}; // 3^40
+    ret = u64arr_ll_write_str(3,false,a.data(),1,s);
+    assert(ret == 41);
+    assert(!strcmp(s,"10000000000000000000000000000000000000000"));
+    a = {12157665459056928801uLL}; // 3^40
+    ret = u64arr_ll_write_str(6,false,a.data(),1,s);
+    assert(ret == 25);
+    assert(!strcmp(s,"2322113124155541030050213"));
+    a = {12157665459056928801uLL,32}; // 3^40 + 2^69
+    ret = u64arr_ll_write_str(11,true,a.data(),2,s);
+    assert(ret == 20);
+    assert(!strcmp(s,"993A16326A55A1898567"));
 }
 
 void test_u64arr_ll_read_str()
 {
     printf("test_u64arr_ll_read_str()\n");
+    BUI a = {0,0,0,0,0,0};
+    size_t ret = u64arr_ll_read_str(36,
+        "1HJTR9LZK0RTZFK81YK6LVBJK3E0TU6CIN22GVKP0OJUAHHIGG7U8WO5Y96X",
+        a.data());
+    assert(ret == 5);
+    assert(BUI_eq(a,{13179439483193780233uLL,795447783920280270uLL,
+        10302852741122617414uLL,4686237692481951503uLL,852376800724301uLL}));
+    a = {0,0,0};
+    ret = u64arr_ll_read_str(21,"4h5h6d75d04backc05969222gbb910451",a.data());
+    assert(ret == 3);
+    assert(BUI_eq(a,
+        {14996889397075187173uLL,16224389114002008162uLL,29004uLL}));
+    a = {0,0,0};
+    ret = u64arr_ll_read_str(10,
+        "9869849057328637468598619034897346872546789",a.data());
+    assert(ret == 3);
+    assert(BUI_eq(a,
+        {14996889397075187173uLL,16224389114002008162uLL,29004uLL}));
+    a = {0,0};
+    ret = u64arr_ll_read_str(2,"0",a.data());
+    assert(ret == 1);
+    assert(BUI_eq(a,{0}));
+    ret = u64arr_ll_read_str(2,
+        "1010100010111000101101000101001000101001000111111110100000100001",
+        a.data());
+    assert(ret == 1);
+    assert(BUI_eq(a,{12157665459056928801uLL}));
+    ret = u64arr_ll_read_str(3,
+        "10000000000000000000000000000000000000000",a.data());
+    assert(ret == 1);
+    assert(BUI_eq(a,{12157665459056928801uLL}));
+    ret = u64arr_ll_read_str(6,"2322113124155541030050213",a.data());
+    assert(ret == 1);
+    assert(BUI_eq(a,{12157665459056928801uLL}));
+    ret = u64arr_ll_read_str(11,"993A16326A55A1898567",a.data());
+    assert(ret == 2);
+    assert(BUI_eq(a,{12157665459056928801uLL,32}));
 }
 
 void test_u64arr_ll_add_to()
@@ -297,12 +426,14 @@ void test_u64arr_ll_div()
 
 int main(int argc, const char **argv)
 {
+    (void)argc;
+    (void)argv;
     //test_u64arr_ll_inc();
     //test_u64arr_ll_dec();
     //test_u64arr_ll_add_64();
     //test_u64arr_ll_sub_64();
     //test_u64arr_ll_mul_32();
-    test_u64arr_ll_mul_64();
+    //test_u64arr_ll_mul_64();
     //test_u64arr_ll_div_32();
     //test_u64arr_ll_div_64();
     //test_u64arr_ll_write_str();

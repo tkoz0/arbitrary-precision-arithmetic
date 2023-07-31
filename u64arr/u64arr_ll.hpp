@@ -68,8 +68,9 @@ size_t u64arr_ll_write_str(uint8_t base, bool uppercase,
                            char *__restrict__ s);
 
 // convert string (s) to number (n)
-// s must end with null and consist only of 0-9 and a-z and A-Z
 // only bases 2-36 are supported with lowercase/uppercase letters
+// s must end with null and consist only of 0-9 and a-z and A-Z
+// (limited by thet base chosen, use a-z and A-Z for digit values 10-35)
 // if input contains other characters, result is undefined
 // n must be long enough to fit result
 // returns number of limbs in result

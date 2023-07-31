@@ -76,3 +76,10 @@ static inline uint64_t _modm61arrle__v2(const uint64_t *arr, size_t len)
     }
     return ret;
 }
+
+// modulo m61 (2^61-1) for large integer, 64 bit limbs, least first
+static inline uint64_t _modm61arrle(const uint64_t *arr, size_t len)
+{
+    // choose version 1 for now
+    return _modm61arrle__v1(arr,len);
+}
