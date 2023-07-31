@@ -79,29 +79,98 @@ BUI BUI_gen_lcg(uint64_t seed, size_t len,
     return ret;
 }
 
+uint32_t crc32(const uint8_t *buf, size_t len, uint32_t h = 0)
+{
+    static uint32_t tab[0x100];
+    static bool tab_gen = false;
+    if (!tab_gen)
+    {
+        for (size_t i = 0; i < 0x100; ++i)
+        {
+            uint32_t r = i;
+            for (size_t j = 0; j < 8; ++j)
+            {
+                // polynomial 0x04C11DB7 reflected (iso 3309)
+                // x^32+x^26+x^23+x^22+x^16+x^12+x^11
+                // +x^10+x^8+x^7+x^5+x^4+x^2+x+1
+                uint32_t x = (r & 1) * 0xEDB88320;
+                r = (r >> 1) ^ x;
+            }
+            tab[i] = r;
+        }
+        tab_gen = true;
+    }
+    // invert before and after (iso standard)
+    h = ~h;
+    for (const uint8_t *p = buf; p < buf+len; ++p)
+        h = (h >> 8) ^ tab[(h & 0xFF) ^ (*p)];
+    return ~h;
+}
+
+uint64_t crc64(const uint8_t *buf, size_t len, uint64_t h = 0)
+{
+    static uint64_t tab[0x100];
+    static bool tab_gen = false;
+    if (!tab_gen)
+    {
+        for (size_t i = 0; i < 0x100; ++i)
+        {
+            uint64_t r = i;
+            for (size_t j = 0; j < 8; ++j)
+            {
+                // polynomial 0x42F0E1EBA9EA3693 reflected (ecma-182)
+                // x^64+x^62+x^57+x^55+x^54+x^53+x^52+x^47+x^46+x^45+x^40
+                // +x^39+x^38+x^37+x^35+x^33+x^32+x^31+x^29+x^27+x^24+x^23
+                // +x^22+x^21+x^19+x^17+x^13+x^12+x^10+x^9+x^7+x^4+x+1
+                uint64_t x = (r & 1) * 0xC96C5795D7870F42uLL;
+                r = (r >> 1) ^ x;
+            }
+            tab[i] = r;
+        }
+        tab_gen = true;
+    }
+    // invert before and after (as done with crc64 used in xz)
+    h = ~h;
+    for (const uint8_t *p = buf; p < buf+len; ++p)
+        h = (h >> 8) ^ tab[(h & 0xFF) ^ (*p)];
+    return ~h;
+}
+
+uint64_t java_str_hash(const uint8_t *buf, size_t len, uint64_t h = 0)
+{
+    for (const uint8_t *p = buf; p < buf+len; ++p)
+        h = (31*h) + (*p);
+    return h;
+}
+
 // class for hashing numbers to check correctness (with high probability)
 // TODO add java string hash (31*hash + nextbyte) and crc64
 struct BUI_hash
 {
-    uint64_t h_add,h_xor,h_mod;
+    uint64_t h_add,h_xor,h_mod,h_str,h_crc;
     BUI_hash(BUI &n)
     {
         h_add = 0;
         h_xor = 0;
+        h_str = 0;
         for (uint64_t i : n)
         {
             h_add += i; // sum of limbs
             h_xor ^= i; // xor of limbs
         }
         h_mod = _modm61arrle__v1(n.data(),n.size()); // mod by a prime
+        h_str = java_str_hash((uint8_t*)n.data(),n.size()<<3);
+        h_crc = crc64((uint8_t*)n.data(),n.size()<<3);
     }
-    BUI_hash(uint64_t h_add, uint64_t h_xor, uint64_t h_mod):
-        h_add(h_add), h_xor(h_xor), h_mod(h_mod) {}
-    BUI_hash(uint64_t n): h_add(n), h_xor(n), h_mod(_modm61(n)) {}
+    BUI_hash(uint64_t h_add, uint64_t h_xor, uint64_t h_mod,
+             uint64_t h_str, uint64_t h_crc):
+        h_add(h_add), h_xor(h_xor), h_mod(h_mod), h_str(h_str), h_crc(h_crc) {}
     bool operator==(const BUI_hash &o)
-    { return (h_add == o.h_add) and (h_xor == o.h_xor) and (h_mod == o.h_mod); }
+    { return (h_add == o.h_add) and (h_xor == o.h_xor) and (h_mod == o.h_mod)
+            and (h_str == o.h_str) and (h_crc == o.h_crc); }
     bool operator!=(const BUI_hash &o)
-    { return (h_add != o.h_add) or (h_xor != o.h_xor) or (h_mod != o.h_mod); }
+    { return (h_add != o.h_add) or (h_xor != o.h_xor) or (h_mod != o.h_mod)
+            or (h_str != o.h_str) or (h_crc != o.h_crc); }
 };
 
 void test_u64arr_ll_inc()
