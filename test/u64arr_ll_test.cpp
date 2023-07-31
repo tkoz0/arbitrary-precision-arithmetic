@@ -3,8 +3,10 @@
 #include <cstdio>
 #include <cstdint>
 #include <cstdlib>
-
 #include <cstring>
+
+#include <algorithm>
+#include <array>
 #include <vector>
 
 #include "../u64arr/u64arr_ll.hpp"
@@ -79,6 +81,58 @@ BUI BUI_gen_lcg(uint64_t seed, size_t len,
     return ret;
 }
 
+template <typename crc_t, crc_t poly, crc_t init, crc_t xorout>
+crc_t crc(const uint8_t *buf, size_t len, crc_t h = 0)
+{
+#if 0 // cannot seem to get compile time table generation to work
+    static constexpr std::array<crc_t,0x100> tab = []()
+    {
+        std::array<crc_t,0x100> tab;
+        std::generate(tab.begin(),tab.end(),
+            [n = crc_t{0}]() mutable
+            {
+                crc_t r = n++;
+                for (size_t j = 0; j < 8; ++j)
+                    r = (r >> 1) ^ ((r & 1) * poly);
+                return r;
+            });
+        return tab;
+    }();
+#else // static variable for crc table
+    static crc_t tab[0x100];
+    static bool tab_gen = false;
+    if (!tab_gen)
+    {
+        for (size_t i = 0; i < 0x100; ++i)
+        {
+            crc_t r = i;
+            for (size_t j = 0; j < 8; ++j)
+            {
+                crc_t x = (r & 1) * poly;
+                r = (r >> 1) ^ x;
+            }
+            tab[i] = r;
+        }
+        tab_gen = true;
+    }
+#endif
+    h ^= init;
+    for (const uint8_t *p = buf; p < buf+len; ++p)
+        h = (h >> 8) ^ tab[(*p ^ h) & 0xFF];
+    return h ^ xorout;
+}
+
+uint32_t crc32(const uint8_t *buf, size_t len)
+{
+    return crc<uint32_t,0xEDB88320,0xFFFFFFFF,0xFFFFFFFF>(buf,len);
+}
+
+uint32_t crc64(const uint8_t *buf, size_t len)
+{
+    return crc<uint64_t,0xC96C5795D7870F42uLL,0xFFFFFFFFFFFFFFFFuLL,
+        0xFFFFFFFFFFFFFFFFuLL>(buf,len);
+}
+/*
 uint32_t crc32(const uint8_t *buf, size_t len, uint32_t h = 0)
 {
     static uint32_t tab[0x100];
@@ -103,7 +157,7 @@ uint32_t crc32(const uint8_t *buf, size_t len, uint32_t h = 0)
     // invert before and after (iso standard)
     h = ~h;
     for (const uint8_t *p = buf; p < buf+len; ++p)
-        h = (h >> 8) ^ tab[(h & 0xFF) ^ (*p)];
+        h = (h >> 8) ^ tab[(*p ^ h) & 0xFF];
     return ~h;
 }
 
@@ -132,10 +186,10 @@ uint64_t crc64(const uint8_t *buf, size_t len, uint64_t h = 0)
     // invert before and after (as done with crc64 used in xz)
     h = ~h;
     for (const uint8_t *p = buf; p < buf+len; ++p)
-        h = (h >> 8) ^ tab[(h & 0xFF) ^ (*p)];
+        h = (h >> 8) ^ tab[(*p ^ h) & 0xFF];
     return ~h;
 }
-
+*/
 uint64_t java_str_hash(const uint8_t *buf, size_t len, uint64_t h = 0)
 {
     for (const uint8_t *p = buf; p < buf+len; ++p)
