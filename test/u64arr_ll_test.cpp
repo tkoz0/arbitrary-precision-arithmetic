@@ -81,6 +81,7 @@ BUI BUI_gen_lcg(uint64_t seed, size_t len,
     return ret;
 }
 
+// crc checksum
 template <typename crc_t, crc_t poly, crc_t init, crc_t xorout>
 crc_t crc(const uint8_t *buf, size_t len, crc_t h = 0)
 {
@@ -132,6 +133,57 @@ uint32_t crc64(const uint8_t *buf, size_t len)
     return crc<uint64_t,0xC96C5795D7870F42uLL,0xFFFFFFFFFFFFFFFFuLL,
         0xFFFFFFFFFFFFFFFFuLL>(buf,len);
 }
+
+// adler checksum (for adler32)
+template <typename adler_t, adler_t mod, typename word_t>
+adler_t adler(const word_t *buf, size_t len)
+{
+    static_assert(sizeof(adler_t) > sizeof(word_t));
+    static_assert(mod < (1 << (4*sizeof(adler_t))));
+    adler_t a = 1, b = 0;
+    for (const word_t *p = buf; p < buf+len; ++p)
+    {
+        a += *p;
+        b += a;
+        // FIXME slow to do mod at every iteration
+        a %= mod;
+        b %= mod;
+    }
+    return (b << (4*sizeof(adler_t))) | a;
+}
+
+uint32_t adler32(const uint8_t *buf, size_t len)
+{
+    return adler<uint32_t,65521,uint8_t>(buf,len);
+}
+
+// fletcher checksum (for fletcher16 and fletcher32)
+template <typename fletcher_t, typename word_t>
+fletcher_t fletcher(const word_t *buf, size_t len)
+{
+    static_assert(sizeof(fletcher_t) == 2*sizeof(word_t));
+    fletcher_t s1 = 0, s2 = 0;
+    for (const word_t *p = buf; p < buf+len; ++p)
+    {
+        s1 += *p;
+        s2 += s1;
+        // FIXME slow to do mod at every iteration
+        s1 %= (word_t)(-1);
+        s2 %= (word_t)(-1);
+    }
+    return (s2 << (8*sizeof(word_t))) | s1;
+}
+
+uint16_t fletcher16(const uint8_t *buf, size_t len)
+{
+    return fletcher<uint16_t,uint8_t>(buf,len);
+}
+
+uint32_t fletcher32(const uint16_t *buf, size_t len)
+{
+    return fletcher<uint32_t,uint16_t>(buf,len);
+}
+
 /*
 uint32_t crc32(const uint8_t *buf, size_t len, uint32_t h = 0)
 {
@@ -551,16 +603,16 @@ int main(int argc, const char **argv)
 {
     (void)argc;
     (void)argv;
-    //test_u64arr_ll_inc();
-    //test_u64arr_ll_dec();
-    //test_u64arr_ll_add_64();
-    //test_u64arr_ll_sub_64();
-    //test_u64arr_ll_mul_32();
-    //test_u64arr_ll_mul_64();
-    //test_u64arr_ll_div_32();
-    //test_u64arr_ll_div_64();
-    //test_u64arr_ll_write_str();
-    //test_u64arr_ll_read_str();
+    test_u64arr_ll_inc();
+    test_u64arr_ll_dec();
+    test_u64arr_ll_add_64();
+    test_u64arr_ll_sub_64();
+    test_u64arr_ll_mul_32();
+    test_u64arr_ll_mul_64();
+    test_u64arr_ll_div_32();
+    test_u64arr_ll_div_64();
+    test_u64arr_ll_write_str();
+    test_u64arr_ll_read_str();
     //test_u64arr_ll_add_to();
     //test_u64arr_ll_sub_from();
     //test_u64arr_ll_add();
