@@ -1,6 +1,7 @@
 # make tests using python3 big integer capability
 
 from functools import reduce
+import sys
 
 UMAX = 0xFFFFFFFFFFFFFFFF
 M61 = 0x1FFFFFFFFFFFFFFF
@@ -43,11 +44,35 @@ def BUI_gen_lcg(seed:int,len_:int,bit_masks:list[int]=[UMAX],mult:int=0x5DEECE66
         ret.append(tmp&mask)
     return arr_to_BUI(ret)
 
-def BUI_hash(n:int) -> tuple[int,int,int]:
+crc_tab = [0]*0x100
+for i in range(0x100):
+    r = i
+    for j in range(8):
+        if r & 1:
+            r >>= 1
+            r ^= 0xC96C5795D7870F42
+        else:
+            r >>= 1
+    crc_tab[i] = r
+
+def BUI_hash(n:int) -> tuple[int,int,int,int,int]:
     r = BUI_to_arr(n)
-    return sum(r)&UMAX,reduce(lambda x,y:x^y,r),n%M61
+    s = 0
+    for x in r:
+        for _ in range(8):
+            s = 31*s + (x & 0xFF)
+            x >>= 8
+            s &= UMAX
+    h = UMAX
+    for x in r:
+        for _ in range(8):
+            h = (h >> 8) ^ crc_tab[(x ^ h) & 0xFF]
+            x >>= 8
+    return sum(r)&UMAX,reduce(lambda x,y:x^y,r),n%M61,s,h^UMAX
 
 a = BUI_gen_lcg(5,100,masks_for_mul)
 b = BUI_gen_lcg(11,100,masks_for_mul)
-print(len(str(a)),len(str(b)),len(str(a*b)))
+print(f'length(a) (base 10) = {len(str(a))}')
+print(f'length(b) (base 10) = {len(str(b))}')
+print(f'length(a*b) (base 10) = {len(str(a*b))}')
 print(BUI_hash(a*b))

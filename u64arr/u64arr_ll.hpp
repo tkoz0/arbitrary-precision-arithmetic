@@ -124,10 +124,10 @@ void u64arr_ll_mul(const uint64_t *__restrict__ x, size_t lx,
 
 // {q,} = {x,lx} / {y,ly}
 // {r,} = {x,lx} % {y,ly}
+// the highest limb in {y,ly} must be nonzero
 // q must have length >= lx-ly+1
 // r must have length >= ly
 // must have lx >= ly
-// behavior undefined if {y,ly} is 0
 void u64arr_ll_div(const uint64_t *__restrict__ x, size_t lx,
                    const uint64_t *__restrict__ y, size_t ly,
                    uint64_t *__restrict__ q,

@@ -258,19 +258,26 @@ struct BUI_hash
     {
         h_add = 0;
         h_xor = 0;
-        h_str = 0;
         for (uint64_t i : n)
         {
             h_add += i; // sum of limbs
             h_xor ^= i; // xor of limbs
         }
-        h_mod = _modm61arrle__v1(n.data(),n.size()); // mod by a prime
+        h_mod = _modm61arrle(n.data(),n.size()); // mod by a prime
         h_str = java_str_hash((uint8_t*)n.data(),n.size()<<3);
         h_crc = crc64((uint8_t*)n.data(),n.size()<<3);
     }
     BUI_hash(uint64_t h_add, uint64_t h_xor, uint64_t h_mod,
              uint64_t h_str, uint64_t h_crc):
         h_add(h_add), h_xor(h_xor), h_mod(h_mod), h_str(h_str), h_crc(h_crc) {}
+    BUI_hash(uint64_t n = 0)
+    {
+        h_add = n;
+        h_xor = n;
+        h_mod = _modm61(n);
+        h_str = java_str_hash((uint8_t*)(&n),8);
+        h_crc = crc64((uint8_t*)(&n),8);
+    }
     bool operator==(const BUI_hash &o)
     { return (h_add == o.h_add) and (h_xor == o.h_xor) and (h_mod == o.h_mod)
             and (h_str == o.h_str) and (h_crc == o.h_crc); }
@@ -568,6 +575,72 @@ void test_u64arr_ll_read_str()
     assert(ret == 2);
     assert(BUI_eq(a,{12157665459056928801uLL,32}));
 }
+
+struct bigger_test_lcg
+{
+    // parameters for BUI_gen_lcg
+    uint64_t a_seed, b_seed;
+    size_t a_len, b_len;
+    // hashes computed from separate python code (do not need to use all)
+    BUI_hash h_add, h_sub, h_mul, h_div, h_mod;
+    // return value for add/sub tests
+    bool r_add, r_sub;
+    bigger_test_lcg(uint64_t a_seed, uint64_t b_seed,
+                    size_t a_len, size_t b_len):
+        a_seed(a_seed), b_seed(b_seed), a_len(a_len), b_len(b_len) {}
+    void set_h_add(BUI_hash h) { h_add = h; }
+    void set_h_sub(BUI_hash h) { h_sub = h; }
+    void set_h_mul(BUI_hash h) { h_mul = h; }
+    void set_h_div(BUI_hash h) { h_div = h; }
+    void set_h_mod(BUI_hash h) { h_mod = h; }
+    void test_add() const
+    {
+        BUI a = BUI_gen_lcg(a_seed,a_len,masks_for_add);
+        BUI b = BUI_gen_lcg(b_seed,b_len,masks_for_add);
+        BUI c(std::max(a_len,b_len),0);
+        u64arr_ll_add(a.data(),a_len,b.data(),b_len,c.data());
+        BUI_hash h(c);
+        assert(h == h_add);
+    }
+    void test_sub() const
+    {
+        BUI a = BUI_gen_lcg(a_seed,a_len,masks_for_add);
+        BUI b = BUI_gen_lcg(b_seed,b_len,masks_for_add);
+        BUI c(std::max(a_len,b_len),0);
+        u64arr_ll_add(a.data(),a_len,b.data(),b_len,c.data());
+        BUI_hash h(c);
+        assert(h == h_sub);
+    }
+    void test_mul() const
+    {
+        BUI a = BUI_gen_lcg(a_seed,a_len,masks_for_mul);
+        BUI b = BUI_gen_lcg(b_seed,b_len,masks_for_mul);
+        BUI c(a_len+b_len);
+        u64arr_ll_mul(a.data(),a_len,b.data(),b_len,c.data());
+        BUI_hash h(c);
+        assert(h == h_mul);
+    }
+    void test_div() const
+    {
+        BUI a = BUI_gen_lcg(a_seed,a_len,masks_for_mul);
+        BUI b = BUI_gen_lcg(b_seed,b_len,masks_for_mul);
+        BUI c(a_len-b_len+1);
+        BUI d(b_len);
+        u64arr_ll_div(a.data(),a_len,b.data(),b_len,c.data(),d.data());
+        BUI_hash h(c);
+        assert(h == h_div);
+    }
+    void test_mod() const
+    {
+        BUI a = BUI_gen_lcg(a_seed,a_len,masks_for_mul);
+        BUI b = BUI_gen_lcg(b_seed,b_len,masks_for_mul);
+        BUI c(a_len-b_len+1);
+        BUI d(b_len);
+        u64arr_ll_div(a.data(),a_len,b.data(),b_len,c.data(),d.data());
+        BUI_hash h(d);
+        assert(h == h_mod);
+    }
+};
 
 void test_u64arr_ll_add_to()
 {

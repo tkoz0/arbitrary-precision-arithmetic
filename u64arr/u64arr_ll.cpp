@@ -173,6 +173,8 @@ bool u64arr_ll_add_to(uint64_t *__restrict__ n1, size_t l1,
         // TODO make this faster
         // it generates a jump instruction
         // see x86 ADC instruction (add with carry)
+        // can probably add in blocks of a few uint64_t
+        // and propagate carries without branching
         tmp = n1[i] + n2[i] + c;
         c = (tmp < n1[i]) or (c and tmp <= n1[i]);
         n1[i] = tmp;
@@ -323,27 +325,51 @@ static inline uint64_t u64arr_ll_div_helper(const uint64_t *__restrict__ y,
     uint64_t *yy = new uint64_t[l];
     for (size_t i = 0; i < l; ++i)
         yy[i] = y[i];
-    // shift yy
+    // shift {yy,l} as much as possible while it is <= {z,l}
+    // attempt based on highest limb first
     size_t s = 0;
-    while (yy[l-1] < z[l-1] and !(yy[l-1] >> 63))
+    while (!(yy[l-1] >> 63) and (yy[l-1] << 1) <= z[l-1])
     {
         yy[l-1] <<= 1;
         ++s;
     }
-    if (s) // need to shift the rest
+    if (s) // need to shift the rest of the limbs
         for (size_t i = l-1; i--;)
         {
             yy[i+1] = (yy[i] >> (64-s));
             yy[i] <<= s;
         }
+    // make sure {yy,l} <= {z,l}
+    bool yyleq = true;
+    for (size_t i = l; i--;)
+    {
+        if (yy[i] == z[i])
+            continue;
+        else
+        {
+            yyleq = (yy[i] < z[i]);
+            break;
+        }
+    }
+    if (!yyleq) // either {y,l} > {z,l} or we shifted 1 bit too much
+    {
+        if (s == 0) // did not shift so {y,l} > {z,l}
+            return 0;
+        else // shifted 1 bit too much
+        {
+            for (size_t i = 0; i < l-1; ++i)
+                yy[i] = (yy[i] >> 1) | (yy[i+1] << 63);
+            yy[l-1] >>= 1;
+        }
+    }
     ++s;
-    while (s--) // repeatedly compare and shift to set bits in ret
+    while (s--) // repeatedly compare and shift to set quotient bits
     {
         // test if {z,l} >= {yy,l}
         size_t j = l-1;
         while (j and z[j] == yy[j])
             --j;
-        if (z[j] >= yy[j]) // set bit in ret and subtract
+        if (z[j] >= yy[j]) // set bit in quotient (ret) and subtract
         {
             ret |= (1uLL << s);
             bool o = u64arr_ll_sub_from(z,l,yy,l);
@@ -364,8 +390,7 @@ void u64arr_ll_div(const uint64_t *__restrict__ x, size_t lx,
                    uint64_t *__restrict__ r)
 {
     assert(lx >= ly and ly > 0);
-    while (y[ly-1] == 0)
-        --ly; // will fail if {y,ly} is 0
+    assert(y[ly-1]);
     // create a copy of x to work with
     uint64_t *z = new uint64_t[lx];
     for (size_t i = 0; i < lx; ++i)
